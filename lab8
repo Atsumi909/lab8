@@ -1,0 +1,113 @@
+using NUnit.Framework;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Support.UI;
+using WebDriverManager;
+using WebDriverManager.DriverConfigs.Impl;
+public class WomenCatalogPage
+{
+    private readonly IWebDriver driver;
+    private readonly WebDriverWait wait;
+    public WomenCatalogPage(IWebDriver driver)
+    {
+        this.driver = driver;
+        this.wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
+    }
+    public void GoTo()
+    {
+  driver.Navigate().GoToUrl("https://intertop.ua/uk-ua/shopping/catalog/women/");
+    }
+    public bool IsPageLoaded()
+    {
+        return driver.Url.Contains("https://intertop.ua/uk-ua/shopping/catalog/women/");
+    }
+    public void WaitForWomenTabVisible()
+    {  wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementIsVisible(By.XPath("//a[contains(text(),'Жінкам')]")));
+    }
+}
+public class ProductPage
+{
+    private readonly IWebDriver driver;
+    public ProductPage(IWebDriver driver)
+    {
+        this.driver = driver;
+    }
+    public void GoToProductPage(string productUrl)
+    {
+        driver.Navigate().GoToUrl(productUrl);
+    }
+    public void SelectSize()
+    {
+        IWebElement selectSizeButton = driver.FindElement(By.XPath("//*[@id=\"vs2__combobox\"]/div[1]"));
+        Assert.IsNotNull(selectSizeButton);
+        selectSizeButton.Click();
+    }
+    public void AddToCart()
+    {
+        IWebElement addToCartButton = driver.FindElement(By.XPath("//*[@id=\"basket_add_preview\"]"));
+        Assert.IsNotNull(addToCartButton);
+        addToCartButton.Click();
+    }
+}
+public class CartPage
+{
+    private readonly IWebDriver driver;
+    public CartPage(IWebDriver driver)
+    {
+        this.driver = driver;
+    }
+    public bool IsCartLinkVisible()
+    {
+        IWebElement cartLink = driver.FindElement(By.XPath("/html/body/div[5]/main/div/div/div/div/div[2]/div[1]"));
+        return cartLink != null;
+    }
+}
+[TestFixture]
+public class IntertopTests
+{
+    private IWebDriver driver;
+    WomenCatalogPage womenCatalogPage;
+    ProductPage productPage;
+    CartPage cartPage;
+    [SetUp]
+    public void SetUp()
+    {
+        new DriverManager().SetUpDriver(new ChromeConfig());
+        driver = new ChromeDriver();
+        womenCatalogPage = new WomenCatalogPage(driver);
+        productPage = new ProductPage(driver);
+        cartPage = new CartPage(driver);
+    }
+    [TearDown]
+    public void TearDown()
+    {
+        driver.Quit();
+    }
+    [Test]
+    public void WomenTabIsAvailable()
+    {
+        womenCatalogPage.GoTo();
+        womenCatalogPage.WaitForWomenTabVisible();
+        Assert.IsTrue(womenCatalogPage.IsPageLoaded());
+    }
+    [Test]
+    public void SearchAndSelectProductForWomen()
+    {
+        womenCatalogPage.GoTo();
+        womenCatalogPage.WaitForWomenTabVisible();
+        IWebElement searchBox = driver.FindElement(By.XPath("//input[@id='v_search_input']"));
+        searchBox.SendKeys("жіноче взуття");
+        searchBox.SendKeys(Keys.Enter);
+        var productList = driver.FindElements(By.XPath("//div[@class='product-list']"));
+        Assert.IsTrue(productList.Count > 0, "Продукт не знайдено в кошику");
+        productList[0].Click();
+        Assert.IsTrue(driver.Url.Contains("https://intertop.ua/uk-ua/product/"), "Немає на сторінці товару");
+    }
+    [Test]
+    public void AddProductToCart()
+    {      productPage.GoToProductPage("https://intertop.ua/uk-ua/product/shoes-and-loafers-liu-jo-7376350");
+        productPage.SelectSize();
+        productPage.AddToCart();
+        Assert.IsTrue(cartPage.IsCartLinkVisible());
+    }
+}
